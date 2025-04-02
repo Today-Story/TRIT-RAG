@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  recommender:
+    build: .
+    container_name: trit-recommender
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    networks:
+      - trit-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - trit-net
+
+  nginx:
+    container_name: rag-nginx
+    image: "nginx:latest"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - trit-net
+    depends_on:
+      - recommender
+    command: '/bin/sh -c ''while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g "daemon off;"'''
+
+  certbot:
+    image: certbot/certbot
+    container_name: rag_certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  trit-net:
+    driver: bridge
