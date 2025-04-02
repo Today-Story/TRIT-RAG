@@ -7,9 +7,25 @@ from rag.recommender import generate_recommendation
 from rag.auth import get_user_from_token
 from dotenv import load_dotenv
 from rag.usage_control_redis import check_usage_limit_redis
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3000",
+    "https://trit-dev.vercel.app",
+    "https://trit-chi.vercel.app",
+    "https://trit.app"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Swagger UI 상단 "Authorize" 버튼에 Bearer Token 설정
 def custom_openapi():
@@ -65,7 +81,7 @@ def recommend(
     longitude: float = Query(...),
     user=Depends(get_user_from_token)
 ):
-    if not check_usage_limit_redis(user["userId"]):
+    if needs == "contents" and not check_usage_limit_redis(user["userId"]):
         raise HTTPException(status_code=429, detail="일일 무료체험 기회가 소진되었습니다.")
     
     try:
