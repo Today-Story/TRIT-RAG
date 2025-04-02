@@ -66,7 +66,7 @@ def recommend(
     user=Depends(get_user_from_token)
 ):
     if not check_usage_limit_redis(user["userId"]):
-        raise HTTPException(status_code=429, detail="일일 한도 초과")
+        raise HTTPException(status_code=429, detail="일일 무료체험 기회가 소진되었습니다.")
     
     try:
         user_country = fetch_user_country(user["userId"])
