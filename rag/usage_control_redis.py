@@ -4,7 +4,7 @@ from datetime import datetime
 # Redis 연결
 r = redis.Redis(host="redis", port=6379, db=0, decode_responses=True)
 
-def check_usage_limit_redis(user_id: int, max_per_day: int = 10) -> bool:
+def check_usage_limit_redis(user_id: int, max_per_day: int = 20) -> bool:
     today = datetime.now().date().isoformat()
     key = f"usage:{user_id}:{today}"
 
