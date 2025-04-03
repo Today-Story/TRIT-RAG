@@ -17,4 +17,4 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # FastAPI 실행
-CMD ["uvicorn", "rag.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "rag.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

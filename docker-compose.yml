@@ -12,6 +12,8 @@ services:
       - redis
     networks:
       - trit-net
+    volumes:
+      - .:/app
 
   redis:
     image: redis:7-alpine
