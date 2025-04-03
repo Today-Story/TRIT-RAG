@@ -2,6 +2,7 @@ import os
 import psycopg2
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from rag.database import load_documents_from_postgres
 from rag.recommender import generate_recommendation
 from rag.auth import get_user_from_token
@@ -82,7 +83,24 @@ def recommend(
     user=Depends(get_user_from_token)
 ):
     if needs == "contents" and not check_usage_limit_redis(user["userId"]):
-        raise HTTPException(status_code=429, detail="일일 무료체험 기회가 소진되었습니다.")
+        return JSONResponse(
+            status_code=429,
+            content={
+                "code": "TOO_MANY_REQUESTS",
+                "message": "The daily free trial opportunity has been used up.",
+                "data": {
+                    "userId": user["userId"],
+                    "message": {
+                        "recommendation": {
+                            "contentsId": None,
+                            "locationId": None,
+                            "creatorId": None,
+                            "reason": "The daily free trial opportunity has been used up."
+                        }
+                    }
+                }
+            }
+        )
     
     try:
         user_country = fetch_user_country(user["userId"])
@@ -97,7 +115,32 @@ def recommend(
 
         contents, locations, creators = load_documents_from_postgres()
         result = generate_recommendation(user, contents, locations, creators)
-        return result
+
+        return JSONResponse(
+            status_code=200,
+            content={
+                "code": "SUCCESS",
+                "message": "Success!",
+                "data": result
+            }
+        )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "ERROR",
+                "message": f"An error occurred while processing the recommendation.: {str(e)}",
+                "data": {
+                    "userId": user["userId"],
+                    "message": {
+                        "recommendation": {
+                            "contentsId": None,
+                            "locationId": None,
+                            "creatorId": None,
+                            "reason": f"Server error: {str(e)}"
+                        }
+                    }
+                }
+            }
+        )
