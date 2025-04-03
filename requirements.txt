@@ -4,7 +4,7 @@ python-dotenv
 psycopg2-binary
 duckduckgo-search
 sentence-transformers
-pinecone-client
+pinecone==6.0.2
 PyJWT==2.8.0
 boto3
 redis

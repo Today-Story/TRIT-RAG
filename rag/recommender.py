@@ -1,9 +1,22 @@
 from rag.utils import calculate_distance
 from rag.llm_bedrock import ask_llama_for_json, generate_reason_emotional
 from rag.websearch import search_web, summarize_place_facts, extract_top_keywords
+from rag.user_behavior import fetch_user_behavior_text
+from rag.embedding_utils import get_embedding
+from rag.pinecone_client import query_similar_users
+
 
 def generate_recommendation(user, contents, locations, creators):
     needs = user["needs"].lower()
+
+    # 사용자 행동 임베딩 생성 및 유사 사용자 검색
+    user_behavior_text = fetch_user_behavior_text(user["userId"])
+    user_embedding = get_embedding(user_behavior_text) if user_behavior_text else None
+
+    similar_user_metadata = []
+    if user_embedding:
+        similar_user_results = query_similar_users(user_embedding, top_k=5)
+        similar_user_metadata = [match["metadata"] for match in similar_user_results.matches if match.get("metadata")]
 
     if needs == "contents":
         matched_contents = [
@@ -11,7 +24,17 @@ def generate_recommendation(user, contents, locations, creators):
             if c["category"].strip().upper() == user["category"].strip().upper()
         ]
 
-        llama_result = ask_llama_for_json(user, matched_contents, "contents")
+        # 유사 사용자들이 선호한 콘텐츠 우선순위 반영
+        preferred_content_ids = []
+        for meta in similar_user_metadata:
+            preferred_content_ids.extend(meta.get("preferred_content_ids", []))
+
+        sorted_contents = sorted(
+            matched_contents,
+            key=lambda c: preferred_content_ids.index(str(c["id"])) if str(c["id"]) in preferred_content_ids else len(preferred_content_ids)
+        ) if preferred_content_ids else matched_contents
+
+        llama_result = ask_llama_for_json(user, sorted_contents, "contents")
 
         if llama_result:
             recommended_content_id = llama_result.get("contentsId")
@@ -71,71 +94,32 @@ def generate_recommendation(user, contents, locations, creators):
             }
         }
 
-    elif needs == "location":
-        user_lat, user_lon = float(user["latitude"]), float(user["longitude"])
-        category = user["category"].strip().upper()
-
-        filtered_locations = [loc for loc in locations if loc.get("category", "").strip().upper() == category]
-        nearest = None
-        min_distance = float("inf")
-
-        for loc in filtered_locations:
-            dist = calculate_distance(user_lat, user_lon, loc["latitude"], loc["longitude"])
-            if dist <= 80 and dist < min_distance:
-                nearest, min_distance = loc, dist
-
-        if nearest:
-            reason = (
-                f"We found a {category.lower()} spot just {min_distance:.2f} km away from you. "
-                f"It suits your interest and is conveniently located based on your current position."
-            )
-            return {
-                "userId": user["userId"],
-                "message": {
-                    "recommendation": {
-                        "contentsId": None,
-                        "locationId": {
-                            "locationId": nearest["id"],
-                            "latitude": nearest["latitude"],
-                            "longitude": nearest["longitude"],
-                            "googleMapId": nearest["google_map_id"]
-                        },
-                        "creatorId": None,
-                        "reason": reason
-                    }
-                }
-            }
-        else:
-            return {
-                "userId": user["userId"],
-                "message": {
-                    "recommendation": {
-                        "contentsId": None,
-                        "locationId": None,
-                        "creatorId": None,
-                        "reason": f"Sorry, we couldn't find any suitable {category.lower()} places within 80 km of your location."
-                    }
-                }
-            }
-
     elif needs == "creator":
         user_category = (user.get("category") or "").strip().upper()
         user_country = (user.get("country") or "").strip().upper()
 
-        # 같은 category를 가진 creator
         creators_same_category = [
             c for c in creators
             if user_category in [cat.strip().upper() for cat in (c.get("category") or [])]
         ]
 
-        # 둘 다 일치하는 creator 추천
         matched_creators = [
             c for c in creators_same_category
             if (c.get("country") or "").strip().upper() == user_country
         ]
 
-        if matched_creators:
-            selected = matched_creators[0]
+        # 유사 사용자들의 선호 크리에이터 우선 반영
+        preferred_creator_ids = []
+        for meta in similar_user_metadata:
+            preferred_creator_ids.extend(meta.get("preferred_creator_ids", []))
+
+        sorted_creators = sorted(
+            matched_creators,
+            key=lambda c: preferred_creator_ids.index(str(c["id"])) if str(c["id"]) in preferred_creator_ids else len(preferred_creator_ids)
+        ) if preferred_creator_ids else matched_creators
+
+        if sorted_creators:
+            selected = sorted_creators[0]
             return {
                 "userId": user["userId"],
                 "message": {
@@ -147,7 +131,7 @@ def generate_recommendation(user, contents, locations, creators):
                             "instruction": selected["introduction"],
                             "youtube": selected["youtube"]
                         },
-                        "reason": "We found a creator who matches your interests and region."
+                        "reason": "We found a creator who matches your interests and behavior."
                     }
                 }
             }
