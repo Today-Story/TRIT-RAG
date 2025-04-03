@@ -14,7 +14,7 @@ COPY . /app
 
 # 환경변수용 dotenv
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # FastAPI 실행
 CMD ["uvicorn", "rag.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
