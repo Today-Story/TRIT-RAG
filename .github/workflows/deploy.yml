@@ -26,23 +26,16 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             set -e
-
             cd ~/TRIT-RAG
-
-            echo "💽 Freeing up disk space on EC2..."
-            sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android || true
-            sudo apt-get clean || true
-            df -h
-
             echo "🔄 Pulling latest code..."
             git pull origin main
 
             echo "🧹 Stopping and removing containers..."
-            docker-compose down
+            docker compose down
 
             echo "🚀 Building and starting containers..."
-            docker-compose build --no-cache
-            docker-compose up -d
+            docker compose build --no-cache
+            docker compose up -d
 
             echo "✅ Deployment complete!"
           EOF
