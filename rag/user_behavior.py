@@ -1,9 +1,10 @@
 import os
 import sys
 import psycopg2
+from datetime import datetime
 from dotenv import load_dotenv
 from rag.embedding_utils import get_embedding
-from rag.pinecone_client import upsert_user_behavior_vector
+from rag.pinecone_client import upsert_user_behavior_vector, fetch_existing_user_metadata
 
 load_dotenv()
 
@@ -51,7 +52,43 @@ def fetch_user_behavior_text(user_id: int) -> str:
 
     return "\n".join(text_blocks)
 
+def get_last_activity_time(user_id: int):
+    conn = psycopg2.connect(
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT")
+    )
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT MAX(latest) FROM (
+            SELECT MAX(watched_at) AS latest FROM watched_history WHERE users_id = %s
+            UNION ALL
+            SELECT MAX(liked_at) FROM liked_history WHERE users_id = %s
+            UNION ALL
+            SELECT MAX(p.updated_at) FROM playlist_contents_list pcl
+                JOIN playlist p ON pcl.playlist_id = p.id
+                WHERE p.user_id = %s
+        ) AS combined;
+    """, (user_id, user_id, user_id))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return result[0] if result and result[0] else None
+
 def store_user_behavior_embedding(user_id: int):
+    last_activity_time = get_last_activity_time(user_id)
+    if not last_activity_time:
+        print(f"[user-{user_id}] No behavior data found.")
+        return
+
+    existing = fetch_existing_user_metadata(str(user_id))
+    last_updated = existing.get("last_updated_at")
+    if last_updated and last_activity_time <= datetime.fromisoformat(last_updated):
+        print(f"[user-{user_id}] No new activity since last update.")
+        return
+
     conn = psycopg2.connect(
         dbname=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
@@ -75,10 +112,6 @@ def store_user_behavior_embedding(user_id: int):
     cursor.close()
     conn.close()
 
-    if not rows:
-        print(f"[user-{user_id}] No behavior data found.")
-        return
-
     content_ids = set()
     creator_ids = set()
     for row in rows:
@@ -94,7 +127,8 @@ def store_user_behavior_embedding(user_id: int):
         "source": "user_behavior",
         "length": len(behavior_text),
         "preferred_content_ids": list(content_ids),
-        "preferred_creator_ids": list(creator_ids)
+        "preferred_creator_ids": list(creator_ids),
+        "last_updated_at": datetime.utcnow().isoformat()
     }
 
     upsert_user_behavior_vector(str(user_id), embedding, metadata)
@@ -118,7 +152,6 @@ def store_all_user_embeddings():
         store_user_behavior_embedding(user_id)
 
 if __name__ == "__main__":
-    import sys
     if len(sys.argv) > 1 and sys.argv[1] == "all":
         store_all_user_embeddings()
     else:
