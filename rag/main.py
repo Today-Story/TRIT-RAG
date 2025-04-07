@@ -7,7 +7,7 @@ from rag.database import load_documents_from_postgres
 from rag.recommender import generate_recommendation
 from rag.auth import get_user_from_token
 from dotenv import load_dotenv
-from rag.usage_control_redis import check_usage_limit_redis
+from rag.usage_control_redis import is_under_limit, increment_usage, get_remaining_usage
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -82,30 +82,31 @@ def recommend(
     longitude: float = Query(...),
     user=Depends(get_user_from_token)
 ):
-    if needs == "contents" and not check_usage_limit_redis(user["userId"]):
+    # 1. 먼저 사용 가능 여부만 체크
+    if not is_under_limit(user["userId"], needs):
         return JSONResponse(
             status_code=429,
             content={
                 "code": "TOO_MANY_REQUESTS",
-                "message": "The daily free trial opportunity has been used up.",
+                "message": f"The daily free trial opportunity for {needs} has been used up.",
                 "data": {
                     "userId": user["userId"],
+                    "remaining": 0,
                     "message": {
                         "recommendation": {
                             "contentsId": None,
                             "locationId": None,
                             "creatorId": None,
-                            "reason": "The daily free trial opportunity has been used up."
+                            "reason": f"The daily free trial opportunity for {needs} has been used up."
                         }
                     }
                 }
             }
         )
-    
+
     try:
         user_country = fetch_user_country(user["userId"])
         user["country"] = user_country
-
         user.update({
             "needs": needs,
             "category": category,
@@ -116,12 +117,29 @@ def recommend(
         contents, locations, creators = load_documents_from_postgres()
         result = generate_recommendation(user, contents, locations, creators)
 
+        # 추천 성공 여부 판단
+        recommendation = result["message"]["recommendation"]
+        success = (
+            (needs == "contents" and recommendation["contentsId"] is not None) or
+            (needs == "creator" and recommendation["creatorId"] is not None)
+        )
+
+        if success:
+            increment_usage(user["userId"], needs)
+
+        remaining_count = get_remaining_usage(user["userId"], needs)
+
         return JSONResponse(
             status_code=200,
             content={
                 "code": "SUCCESS",
                 "message": "Success!",
-                "data": result
+                "data": {
+                    **result,
+                    "remaining": {
+                        needs: remaining_count
+                    }
+                }
             }
         )
 
@@ -133,6 +151,7 @@ def recommend(
                 "message": f"An error occurred while processing the recommendation.: {str(e)}",
                 "data": {
                     "userId": user["userId"],
+                    "remaining": get_remaining_usage(user["userId"]),
                     "message": {
                         "recommendation": {
                             "contentsId": None,
