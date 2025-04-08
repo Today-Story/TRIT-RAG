@@ -1,4 +1,3 @@
-# Dockerfile
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -9,11 +8,14 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 복사
+# 사전 설치: torch, transformers, numpy
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir torch>=2.1.0 transformers>=4.35.0 numpy<2
+
+# 앱 복사
 COPY . /app
 
-# 환경변수용 dotenv
-RUN pip install --upgrade pip
+# 나머지 라이브러리 설치
 RUN pip install --no-cache-dir -r requirements.txt
 
 # FastAPI 실행
