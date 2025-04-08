@@ -102,3 +102,48 @@ Return JSON like:
     except Exception as e:
         print("Claude 메시지 실패:", e)
         return None
+    
+def generate_creator_reason(user, creator):
+    creator_category = (
+        ", ".join(creator['category']) if isinstance(creator['category'], list)
+        else creator['category']
+    )
+
+    prompt = f"""
+You're a recommendation expert for creators.
+
+Your goal is to emotionally persuade the user why this creator is the best match,
+based on the user's preferences and behavior.
+
+User:
+- Name: {user['name']}
+- Age: {user['age']}, Gender: {user['gender']}, Country: {user['country']}
+- Interested category: {user['category']}
+- This user has shown interest in content with related hashtags and creators from similar categories and regions.
+
+Creator:
+- Name: {creator['name']}
+- Country: {creator['country']}
+- Category: {creator_category}
+- Introduction: {creator['introduction']}
+
+Please format your answer strictly in this JSON format:
+{{
+  "title": "<emotionally engaging title (max 60 characters)>",
+  "lines": [
+    "<line 1: briefly explain why this creator fits the user's interests>",
+    "<line 2: highlight what’s unique about this creator>",
+    "<line 3: link creator traits to user behavior and preferences>"
+  ]
+}}
+
+The combined length of all 3 lines should be within 100 characters total.
+Use natural, intuitive language that builds emotional connection.
+"""
+    try:
+        result = invoke_claude(prompt)
+        match = re.search(r"\{[\s\S]*?\}", result)
+        return json.loads(match.group(0)) if match else None
+    except Exception as e:
+        print("Claude 크리에이터 추천 reason 실패:", e)
+        return None
