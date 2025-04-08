@@ -9,9 +9,19 @@ from rag.auth import get_user_from_token
 from dotenv import load_dotenv
 from rag.usage_control_redis import is_under_limit, increment_usage, get_remaining_usage
 from fastapi.middleware.cors import CORSMiddleware
-
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Counter
 
 app = FastAPI()
+
+# Prometheus exporter 등록
+Instrumentator().instrument(app).expose(app)
+
+# 추천 실패율 metric 정의
+recommendation_failures_total = Counter(
+    "recommendation_failures_total",
+    "Total number of failed recommendations"
+)
 
 origins = [
     "http://localhost:3000",
@@ -95,7 +105,6 @@ def recommend(
                     "message": {
                         "recommendation": {
                             "contentsId": None,
-                            "locationId": None,
                             "creatorId": None,
                             "reason": f"The daily free trial opportunity for {needs} has been used up."
                         }
@@ -126,6 +135,8 @@ def recommend(
 
         if success:
             increment_usage(user["userId"], needs)
+        else:
+            recommendation_failures_total.inc()  # 실패 카운트 증가
 
         remaining_count = get_remaining_usage(user["userId"], needs)
 
@@ -144,6 +155,7 @@ def recommend(
         )
 
     except Exception as e:
+        recommendation_failures_total.inc()  # 예외도 실패로 간주
         return JSONResponse(
             status_code=500,
             content={
@@ -155,7 +167,6 @@ def recommend(
                     "message": {
                         "recommendation": {
                             "contentsId": None,
-                            "locationId": None,
                             "creatorId": None,
                             "reason": f"Server error: {str(e)}"
                         }

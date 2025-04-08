@@ -12,3 +12,4 @@ pinecone==6.0.2
 PyJWT==2.8.0
 boto3
 redis
+prometheus-fastapi-instrumentator
