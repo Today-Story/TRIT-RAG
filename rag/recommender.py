@@ -1,5 +1,5 @@
 from rag.utils import calculate_distance
-from rag.llm_bedrock import ask_llama_for_json, generate_reason_emotional
+from rag.llm_bedrock import ask_llama_for_json, generate_reason_emotional, generate_creator_reason
 from rag.websearch import search_web, summarize_place_facts, extract_top_keywords
 from rag.user_behavior import fetch_user_behavior_text
 from rag.embedding_utils import get_embedding
@@ -120,6 +120,10 @@ def generate_recommendation(user, contents, locations, creators):
 
         if sorted_creators:
             selected = sorted_creators[0]
+            
+            # LLM으로 reason 생성
+            reason = generate_creator_reason(user, selected)
+            
             return {
                 "userId": user["userId"],
                 "message": {
@@ -131,7 +135,10 @@ def generate_recommendation(user, contents, locations, creators):
                             "instruction": selected["introduction"],
                             "youtube": selected["youtube"]
                         },
-                        "reason": "We found a creator who matches your interests and behavior."
+                        "reason": reason if reason else {
+                            "title": "Matched Creator",
+                            "lines": ["A creator matching your interest has been selected."]
+                        }
                     }
                 }
             }
