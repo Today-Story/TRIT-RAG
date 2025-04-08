@@ -83,7 +83,6 @@ def generate_recommendation(user, contents, locations, creators):
             "message": {
                 "recommendation": {
                     "contentsId": content_info,
-                    "locationId": None,
                     "creatorId": None,
                     "reason": (
                         reason_result if reason_result
@@ -129,7 +128,6 @@ def generate_recommendation(user, contents, locations, creators):
                 "message": {
                     "recommendation": {
                         "contentsId": None,
-                        "locationId": None,
                         "creatorId": {
                             "creatorId": selected["id"],
                             "instruction": selected["introduction"],
@@ -148,7 +146,6 @@ def generate_recommendation(user, contents, locations, creators):
                 "message": {
                     "recommendation": {
                         "contentsId": None,
-                        "locationId": None,
                         "creatorId": None,
                         "reason": "Sorry, we couldn't find a suitable creator based on your preferences."
                     }
@@ -161,7 +158,6 @@ def generate_recommendation(user, contents, locations, creators):
             "message": {
                 "recommendation": {
                     "contentsId": None,
-                    "locationId": None,
                     "creatorId": None,
                     "reason": "Unknown needs type."
                 }

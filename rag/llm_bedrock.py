@@ -2,7 +2,15 @@ import boto3
 import json
 import re
 import random
+import time
 from botocore.config import Config
+from prometheus_client import Summary
+
+# LLM 응답 시간 측정을 위한 Prometheus metric 정의
+llm_latency_seconds = Summary(
+    "llm_latency_seconds",
+    "Latency for Claude LLM responses (in seconds)"
+)
 
 # Claude 3 Haiku 모델 설정
 bedrock = boto3.client(
@@ -12,6 +20,7 @@ bedrock = boto3.client(
 )
 
 # Claude 3 Messages API 형식 호출
+@llm_latency_seconds.time()
 def invoke_claude(prompt: str) -> str:
     body = {
         "anthropic_version": "bedrock-2023-05-31",
