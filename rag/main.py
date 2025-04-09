@@ -1,9 +1,9 @@
 import os
 import psycopg2
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, Query, Depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
-from rag.database import load_documents_from_postgres
+from rag.database import load_documents_from_postgres, save_recommendation_to_db, get_recommendations_by_user
 from rag.recommender import generate_recommendation
 from rag.auth import get_user_from_token
 from dotenv import load_dotenv
@@ -135,8 +135,25 @@ def recommend(
 
         if success:
             increment_usage(user["userId"], needs)
+
+            save_recommendation_to_db({
+                "user_id": user["userId"],
+                "needs": needs,
+                "category": category,
+                "contents_id": (
+                    recommendation.get("contentsId", {}).get("contentsId")
+                    if isinstance(recommendation.get("contentsId"), dict)
+                    else recommendation.get("contentsId")
+                ),
+                "creator_id": (
+                    recommendation.get("creatorId", {}).get("creatorId")
+                    if isinstance(recommendation.get("creatorId"), dict)
+                    else recommendation.get("creatorId")
+                ),
+                "reason": recommendation.get("reason")
+            })
         else:
-            recommendation_failures_total.inc()  # 실패 카운트 증가
+            recommendation_failures_total.inc()
 
         remaining_count = get_remaining_usage(user["userId"], needs)
 
@@ -155,7 +172,7 @@ def recommend(
         )
 
     except Exception as e:
-        recommendation_failures_total.inc()  # 예외도 실패로 간주
+        recommendation_failures_total.inc()
         return JSONResponse(
             status_code=500,
             content={
@@ -163,7 +180,7 @@ def recommend(
                 "message": f"An error occurred while processing the recommendation.: {str(e)}",
                 "data": {
                     "userId": user["userId"],
-                    "remaining": get_remaining_usage(user["userId"]),
+                    "remaining": get_remaining_usage(user["userId"], needs),
                     "message": {
                         "recommendation": {
                             "contentsId": None,
@@ -172,5 +189,28 @@ def recommend(
                         }
                     }
                 }
+            }
+        )
+
+# 사용자별 추천 이력 조회 API
+@app.get("/api/v1/users/recommend/history")
+def get_recommendation_history(user=Depends(get_user_from_token)):
+    try:
+        history = get_recommendations_by_user(user["userId"])
+        return JSONResponse(
+            status_code=200,
+            content={
+                "code": "SUCCESS",
+                "message": "Fetched recommendation history successfully.",
+                "data": history
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "ERROR",
+                "message": f"Failed to fetch recommendation history: {str(e)}",
+                "data": []
             }
         )
