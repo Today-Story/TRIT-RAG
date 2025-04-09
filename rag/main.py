@@ -27,7 +27,8 @@ origins = [
     "http://localhost:3000",
     "https://trit-dev.vercel.app",
     "https://trit-chi.vercel.app",
-    "https://trit.app"
+    "https://trit.app",
+    "https://www.trit.app"
 ]
 
 app.add_middleware(
