@@ -1,4 +1,5 @@
 import os
+import json
 import psycopg2
 from dotenv import load_dotenv
 
@@ -88,15 +89,16 @@ def save_recommendation_to_db(data: dict):
 
     cursor.execute(
         """
-        INSERT INTO recommendation_history (user_id, needs, contents_id, creator_id, reason)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO recommendation_history (user_id, needs, category, contents_id, creator_id, reason)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """,
         (
             data["user_id"],
             data["needs"],
+            data["category"],
             contents_id,
             creator_id,
-            data["reason"]
+            json.dumps(data["reason"])
         )
     )
 
@@ -115,7 +117,7 @@ def get_recommendations_by_user(user_id: int) -> list:
     )
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT id, needs, contents_id, creator_id, reason, created_at
+        SELECT id, needs, category, contents_id, creator_id, reason, created_at
         FROM recommendation_history
         WHERE user_id = %s
         ORDER BY created_at DESC
@@ -128,10 +130,11 @@ def get_recommendations_by_user(user_id: int) -> list:
         {
             "id": row[0],
             "needs": row[1],
-            "contentsId": row[2],
-            "creatorId": row[3],
-            "reason": row[4],
-            "createdAt": row[5].isoformat()
+            "category": row[2],
+            "contentsId": row[3],
+            "creatorId": row[4],
+            "reason": row[5],
+            "createdAt": row[6].isoformat()
         }
         for row in rows
     ]

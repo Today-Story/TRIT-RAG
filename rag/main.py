@@ -1,6 +1,5 @@
 import os
 import psycopg2
-import json
 from fastapi import FastAPI, Query, Depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
@@ -137,12 +136,10 @@ def recommend(
         if success:
             increment_usage(user["userId"], needs)
 
-            reason_raw = recommendation.get("reason")
-            reason_str = reason_raw if isinstance(reason_raw, str) else str(reason_raw)
-
             save_recommendation_to_db({
                 "user_id": user["userId"],
                 "needs": needs,
+                "category": category,
                 "contents_id": (
                     recommendation.get("contentsId", {}).get("contentsId")
                     if isinstance(recommendation.get("contentsId"), dict)
@@ -153,7 +150,7 @@ def recommend(
                     if isinstance(recommendation.get("creatorId"), dict)
                     else recommendation.get("creatorId")
                 ),
-                "reason": json.dumps(recommendation.get("reason"), ensure_ascii=False)
+                "reason": recommendation.get("reason")
             })
         else:
             recommendation_failures_total.inc()
