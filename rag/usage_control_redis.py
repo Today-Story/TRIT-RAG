@@ -20,3 +20,9 @@ def increment_usage(user_id: int, needs: str):
     new_count = r.incr(key)
     if new_count == 1:
         r.expire(key, 86400)
+
+def get_all_remaining_usage(user_id: int, need_types=["contents", "creator"], max_per_day: int = 20) -> dict:
+    remaining = {}
+    for need in need_types:
+        remaining[need] = get_remaining_usage(user_id, need, max_per_day)
+    return remaining
