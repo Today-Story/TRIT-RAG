@@ -128,7 +128,7 @@ User:
 - Name: {user['name']}
 - Age: {user['age']}, Gender: {user['gender']}, Country: {user['country']}
 - Interested category: {user['category']}
-- This user has shown interest in content with related creators from similar categories and regions.
+- This user has shown interest in content with related hashtags and creators from similar categories and regions.
 
 Creator:
 - Name: {creator['name']}

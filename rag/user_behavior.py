@@ -25,7 +25,8 @@ def fetch_user_behavior_text(user_id: int) -> str:
             c.description,
             c.category,
             u.nickname,
-            c.creator_id
+            c.creator_id,
+            ARRAY_AGG(h.name) AS hashtags
         FROM contents c
         LEFT JOIN watched_history v ON v.contents_id = c.id AND v.users_id = %s
         LEFT JOIN liked_history l ON l.contents_id = c.id AND l.users_id = %s
@@ -33,7 +34,10 @@ def fetch_user_behavior_text(user_id: int) -> str:
         LEFT JOIN playlist p ON pcl.playlist_id = p.id AND p.user_id = %s
         LEFT JOIN creator cr ON c.creator_id = cr.id
         LEFT JOIN users u ON cr.user_id = u.id
+        LEFT JOIN hashtags_contents_mapping hcm ON hcm.contents_id = c.id
+        LEFT JOIN hashtags h ON hcm.hashtags_id = h.id
         WHERE v.users_id IS NOT NULL OR l.users_id IS NOT NULL OR p.user_id IS NOT NULL
+        GROUP BY c.id, u.nickname, c.title, c.description, c.category, c.creator_id
     """, (user_id, user_id, user_id))
 
     rows = cursor.fetchall()
@@ -45,8 +49,9 @@ def fetch_user_behavior_text(user_id: int) -> str:
 
     text_blocks = []
     for row in rows:
-        title, desc, category, creator = row[1], row[2], row[3], row[4], row[5]
-        block = f"Title: {title}, Desc: {desc}, Category: {category}, Creator: {creator}"
+        title, desc, category, creator, hashtags = row[1], row[2], row[3], row[4], row[6] or []
+        hashtags_str = ", ".join(hashtags)
+        block = f"Title: {title}, Desc: {desc}, Category: {category}, Tags: {hashtags_str}, Creator: {creator}"
         text_blocks.append(block)
 
     return "\n".join(text_blocks)
