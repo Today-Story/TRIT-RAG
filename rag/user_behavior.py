@@ -24,7 +24,6 @@ def fetch_user_behavior_text(user_id: int) -> str:
             c.title,
             c.description,
             c.category,
-            c.hashtags,
             u.nickname,
             c.creator_id
         FROM contents c
@@ -46,8 +45,8 @@ def fetch_user_behavior_text(user_id: int) -> str:
 
     text_blocks = []
     for row in rows:
-        title, desc, category, hashtags, creator = row[1], row[2], row[3], row[4], row[5]
-        block = f"Title: {title}, Desc: {desc}, Category: {category}, Tags: {hashtags}, Creator: {creator}"
+        title, desc, category, creator = row[1], row[2], row[3], row[4], row[5]
+        block = f"Title: {title}, Desc: {desc}, Category: {category}, Creator: {creator}"
         text_blocks.append(block)
 
     return "\n".join(text_blocks)
