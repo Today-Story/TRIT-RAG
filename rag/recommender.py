@@ -24,6 +24,22 @@ def generate_recommendation(user, contents, locations, creators):
             if c["category"].strip().upper() == user["category"].strip().upper()
         ]
 
+        # 콘텐츠 없을 경우
+        if not matched_contents:
+            return {
+                "userId": user["userId"],
+                "message": {
+                    "recommendation": {
+                        "contentsId": None,
+                        "creatorId": None,
+                        "reason": {
+                            "title": "No recommendation",
+                            "lines": [f"There is no {user['category']} content available for you at the moment."]
+                        }
+                    }
+                }
+            }
+
         # 유사 사용자들이 선호한 콘텐츠 우선순위 반영
         preferred_content_ids = []
         for meta in similar_user_metadata:
@@ -117,40 +133,42 @@ def generate_recommendation(user, contents, locations, creators):
             key=lambda c: preferred_creator_ids.index(str(c["id"])) if str(c["id"]) in preferred_creator_ids else len(preferred_creator_ids)
         ) if preferred_creator_ids else matched_creators
 
-        if sorted_creators:
-            selected = sorted_creators[0]
-            
-            # LLM으로 reason 생성
-            reason = generate_creator_reason(user, selected)
-            
-            return {
-                "userId": user["userId"],
-                "message": {
-                    "recommendation": {
-                        "contentsId": None,
-                        "creatorId": {
-                            "creatorId": selected["id"],
-                            "instruction": selected["introduction"],
-                            "youtube": selected["youtube"]
-                        },
-                        "reason": reason if reason else {
-                            "title": "Matched Creator",
-                            "lines": ["A creator matching your interest has been selected."]
-                        }
-                    }
-                }
-            }
-        else:
+        # 크리에이터 없을 경우
+        if not sorted_creators:
             return {
                 "userId": user["userId"],
                 "message": {
                     "recommendation": {
                         "contentsId": None,
                         "creatorId": None,
-                        "reason": "Sorry, we couldn't find a suitable creator based on your preferences."
+                        "reason": {
+                            "title": "No creator found",
+                            "lines": [f"No creators match your category and country."]
+                        }
                     }
                 }
             }
+
+        selected = sorted_creators[0]
+        reason = generate_creator_reason(user, selected)
+
+        return {
+            "userId": user["userId"],
+            "message": {
+                "recommendation": {
+                    "contentsId": None,
+                    "creatorId": {
+                        "creatorId": selected["id"],
+                        "instruction": selected["introduction"],
+                        "youtube": selected["youtube"]
+                    },
+                    "reason": reason if reason else {
+                        "title": "Matched Creator",
+                        "lines": ["A creator matching your interest has been selected."]
+                    }
+                }
+            }
+        }
 
     else:
         return {
