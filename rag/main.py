@@ -7,7 +7,7 @@ from rag.database import load_documents_from_postgres, save_recommendation_to_db
 from rag.recommender import generate_recommendation
 from rag.auth import get_user_from_token
 from dotenv import load_dotenv
-from rag.usage_control_redis import is_under_limit, increment_usage, get_remaining_usage
+from rag.usage_control_redis import is_under_limit, increment_usage, get_remaining_usage, get_all_remaining_usage
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_client import Counter
@@ -214,3 +214,30 @@ def get_recommendation_history(user=Depends(get_user_from_token)):
                 "data": []
             }
         )
+
+# 사용자별 일일 잔여 횟수 조회 API
+@app.get("/api/v1/users/usage")
+def get_remaining_usage_all(user=Depends(get_user_from_token)):
+    try:
+        remaining = get_all_remaining_usage(user["userId"])
+        return JSONResponse(
+            status_code=200,
+            content={
+                "code": "SUCCESS",
+                "message": "Remaining usage fetched successfully.",
+                "data": {
+                    "userId": user["userId"],
+                    "remaining": remaining
+                }
+            }
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "code": "ERROR",
+                "message": f"Failed to fetch usage info: {str(e)}",
+                "data": {}
+            }
+        )
+    
