@@ -31,11 +31,11 @@ jobs:
             git pull origin main
 
             echo "🧹 Stopping and removing containers..."
-            docker-compose down
+            docker-compose -f docker-compose.prod.yml down
 
             echo "🚀 Building and starting containers..."
-            docker-compose build --no-cache
-            docker-compose up -d
+            docker-compose -f docker-compose.prod.yml build --no-cache
+            docker-compose -f docker-compose.prod.yml up -d
 
             echo "✅ Deployment complete!"
           EOF

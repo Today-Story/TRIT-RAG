@@ -2,7 +2,6 @@ import boto3
 import json
 import re
 import random
-import time
 from botocore.config import Config
 from prometheus_client import Summary
 
