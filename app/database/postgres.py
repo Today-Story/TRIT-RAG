@@ -1,17 +1,15 @@
-import os
 import json
 import psycopg2
-from dotenv import load_dotenv
+from app.core.config import settings
 
-load_dotenv()
 
 def load_documents_from_postgres():
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
 
@@ -69,17 +67,17 @@ def load_documents_from_postgres():
     conn.close()
     return contents, locations, creators
 
+
 def save_recommendation_to_db(data: dict):
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
 
-    # dict인 경우 None 처리 (중복 안전성 보장)
     contents_id = data.get("contents_id")
     creator_id = data.get("creator_id")
     if isinstance(contents_id, dict):
@@ -106,16 +104,17 @@ def save_recommendation_to_db(data: dict):
     cursor.close()
     conn.close()
 
+
 def get_recommendations_by_user(user_id: int) -> list:
-    load_dotenv()
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
+
     cursor.execute("""
         SELECT id, needs, category, contents_id, creator_id, reason, created_at
         FROM recommendation_history
@@ -138,3 +137,18 @@ def get_recommendations_by_user(user_id: int) -> list:
         }
         for row in rows
     ]
+
+def fetch_user_country(user_id: int) -> str:
+    conn = psycopg2.connect(
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
+    )
+    cursor = conn.cursor()
+    cursor.execute("SELECT country FROM users WHERE id = %s", (user_id,))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return result[0] if result else None
