@@ -1,9 +1,9 @@
-from rag.utils import calculate_distance
-from rag.llm_bedrock import ask_llama_for_json, generate_reason_emotional, generate_creator_reason
-from rag.websearch import search_web, summarize_place_facts, extract_top_keywords
-from rag.user_behavior import fetch_user_behavior_text
-from rag.embedding_utils import get_embedding
-from rag.pinecone_client import query_similar_users
+from app.utils.distance import calculate_distance
+from app.llm.bedrock import ask_llama_for_json, generate_reason_emotional, generate_creator_reason
+from app.utils.websearch import search_web, summarize_place_facts, extract_top_keywords
+from app.behavior.user_behavior import fetch_user_behavior_text
+from app.recommender.embedding import get_embedding
+from app.database.pinecone_client import query_similar_users
 
 
 def generate_recommendation(user, contents, locations, creators):

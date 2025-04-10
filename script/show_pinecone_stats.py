@@ -1,4 +1,4 @@
-from rag.pinecone_client import index
+from app.database.pinecone_client import index
 
 def show_total_vector_count():
     stats = index.describe_index_stats()

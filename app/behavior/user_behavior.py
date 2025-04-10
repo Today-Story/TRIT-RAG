@@ -1,32 +1,27 @@
-import os
-import sys
-import psycopg2
 from datetime import datetime
-from dotenv import load_dotenv
-from rag.embedding_utils import get_embedding
-from rag.pinecone_client import upsert_user_behavior_vector, fetch_existing_user_metadata
+import psycopg2
+from app.core.config import settings
+from app.recommender.embedding import get_embedding
+from app.database.pinecone_client import (
+    upsert_user_behavior_vector,
+    fetch_existing_user_metadata,
+)
 
-load_dotenv()
 
 def fetch_user_behavior_text(user_id: int) -> str:
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
 
     cursor.execute("""
         SELECT DISTINCT
-            c.id,
-            c.title,
-            c.description,
-            c.category,
-            u.nickname,
-            c.creator_id,
-            ARRAY_AGG(h.name) AS hashtags
+            c.id, c.title, c.description, c.category, u.nickname,
+            c.creator_id, ARRAY_AGG(h.name) AS hashtags
         FROM contents c
         LEFT JOIN watched_history v ON v.contents_id = c.id AND v.users_id = %s
         LEFT JOIN liked_history l ON l.contents_id = c.id AND l.users_id = %s
@@ -56,13 +51,14 @@ def fetch_user_behavior_text(user_id: int) -> str:
 
     return "\n".join(text_blocks)
 
+
 def get_last_activity_time(user_id: int):
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
     cursor.execute("""
@@ -81,6 +77,7 @@ def get_last_activity_time(user_id: int):
     conn.close()
     return result[0] if result and result[0] else None
 
+
 def store_user_behavior_embedding(user_id: int):
     last_activity_time = get_last_activity_time(user_id)
     if not last_activity_time:
@@ -94,11 +91,11 @@ def store_user_behavior_embedding(user_id: int):
         return
 
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
 
@@ -116,13 +113,8 @@ def store_user_behavior_embedding(user_id: int):
     cursor.close()
     conn.close()
 
-    content_ids = set()
-    creator_ids = set()
-    for row in rows:
-        if row[0]:
-            content_ids.add(str(row[0]))
-        if row[1]:
-            creator_ids.add(str(row[1]))
+    content_ids = {str(row[0]) for row in rows if row[0]}
+    creator_ids = {str(row[1]) for row in rows if row[1]}
 
     behavior_text = fetch_user_behavior_text(user_id)
     embedding = get_embedding(behavior_text)
@@ -138,13 +130,14 @@ def store_user_behavior_embedding(user_id: int):
     upsert_user_behavior_vector(str(user_id), embedding, metadata)
     print(f"[user-{user_id}] Behavior embedding stored in Pinecone.")
 
+
 def store_all_user_embeddings():
     conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT")
+        dbname=settings.DB_NAME,
+        user=settings.DB_USER,
+        password=settings.DB_PASSWORD,
+        host=settings.DB_HOST,
+        port=settings.DB_PORT
     )
     cursor = conn.cursor()
     cursor.execute("SELECT id FROM users")
@@ -153,11 +146,4 @@ def store_all_user_embeddings():
     conn.close()
 
     for user_id in user_ids:
-        store_user_behavior_embedding(user_id)
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "all":
-        store_all_user_embeddings()
-    else:
-        user_id = int(sys.argv[1]) if len(sys.argv) > 1 else 1
         store_user_behavior_embedding(user_id)

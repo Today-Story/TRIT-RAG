@@ -1,13 +1,10 @@
 import jwt
-import os
 from fastapi import Header, HTTPException
 from typing import Annotated
-from dotenv import load_dotenv
+from app.core.config import settings
 
-load_dotenv()
-
-SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = "HS256"
+SECRET_KEY = settings.JWT_SECRET
 
 def get_user_from_token(
     authorization: Annotated[str, Header(..., include_in_schema=False)]
