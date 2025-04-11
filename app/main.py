@@ -25,7 +25,7 @@ origins = [
     "https://trit-chi.vercel.app",
     "https://trit.app",
     "https://www.trit.app",
-    "https://trit-test-only.vercel.app/home"
+    "https://trit-test-only.vercel.app"
 ]
 
 app.add_middleware(
