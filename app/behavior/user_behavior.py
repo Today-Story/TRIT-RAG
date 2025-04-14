@@ -7,7 +7,6 @@ from app.database.pinecone_client import (
     fetch_existing_user_metadata,
 )
 
-
 def fetch_user_behavior_text(user_id: int) -> str:
     conn = psycopg2.connect(
         dbname=settings.DB_NAME,
@@ -51,7 +50,6 @@ def fetch_user_behavior_text(user_id: int) -> str:
 
     return "\n".join(text_blocks)
 
-
 def get_last_activity_time(user_id: int):
     conn = psycopg2.connect(
         dbname=settings.DB_NAME,
@@ -76,7 +74,6 @@ def get_last_activity_time(user_id: int):
     cursor.close()
     conn.close()
     return result[0] if result and result[0] else None
-
 
 def store_user_behavior_embedding(user_id: int):
     last_activity_time = get_last_activity_time(user_id)
@@ -130,7 +127,6 @@ def store_user_behavior_embedding(user_id: int):
     upsert_user_behavior_vector(str(user_id), embedding, metadata)
     print(f"[user-{user_id}] Behavior embedding stored in Pinecone.")
 
-
 def store_all_user_embeddings():
     conn = psycopg2.connect(
         dbname=settings.DB_NAME,
@@ -147,3 +143,15 @@ def store_all_user_embeddings():
 
     for user_id in user_ids:
         store_user_behavior_embedding(user_id)
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "all":
+        store_all_user_embeddings()
+    else:
+        try:
+            user_id = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+            store_user_behavior_embedding(user_id)
+        except Exception as e:
+            print(f"❌ Error: {e}")
