@@ -1,5 +1,5 @@
 import httpx
-from app.core.config import settings  # .env에서 API 키 불러오기
+from app.core.config import settings
 
 DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"
 
