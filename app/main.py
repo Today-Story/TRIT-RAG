@@ -12,6 +12,7 @@ from app.service.usage import (
     get_user_remaining_usage
 )
 from app.monitoring.metrics import recommendation_failures_total
+from app.translate.router import router as translate_router
 
 app = FastAPI()
 
@@ -25,7 +26,7 @@ origins = [
     "https://trit-chi.vercel.app",
     "https://trit.app",
     "https://www.trit.app",
-    "https://trit-test-only.vercel.app/home"
+    "https://trit-test-only.vercel.app"
 ]
 
 app.add_middleware(
@@ -85,3 +86,5 @@ def get_recommendation_history(user=Depends(get_user_from_token)):
 @app.get("/api/v1/users/usage")
 def get_remaining_usage_all(user=Depends(get_user_from_token)):
     return get_user_remaining_usage(user["userId"])
+
+app.include_router(translate_router)
