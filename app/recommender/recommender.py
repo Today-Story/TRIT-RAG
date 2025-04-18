@@ -85,6 +85,7 @@ def generate_recommendation(user, contents, locations, creators):
 
             content_info = {
                 "contentsId": recommended_content_id,
+                "thumbnail": recommended["thumbnail"],
                 "locationId": nearest["id"] if nearest else None,
                 "latitude": nearest["latitude"] if nearest else None,
                 "longitude": nearest["longitude"] if nearest else None,
