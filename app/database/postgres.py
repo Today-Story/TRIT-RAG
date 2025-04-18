@@ -13,14 +13,15 @@ def load_documents_from_postgres():
     )
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, category, title, description FROM contents")
+    cursor.execute("SELECT id, category, thumbnail, title, description FROM contents")
     contents = [
         {
             "id": row[0],
             "type": "content",
             "category": row[1],
-            "title": row[2],
-            "desc": row[3] or ""
+            "thumbnail": row[2],
+            "title": row[3],
+            "desc": row[4] or ""
         }
         for row in cursor.fetchall()
     ]
